@@ -1,185 +1,62 @@
-# FlightHub — architecture
-
-## Overview
-
-FlightHub is a small **FastAPI** backend plus **Express** static/HTML frontend. Persistence is **SQLite** (`backend/flighthub.db`) via **SQLAlchemy 2.x** ORM models. Request/response shapes use **Pydantic v2** (`backend/schemas.py`). The browser UI is served from **`http://localhost:3000`** or **`http://127.0.0.1:3000`** (Express static **`frontend/public/`**); the API base URL in the SPA is **`http://localhost:8000`**.
-
-Layers:
-
-- **HTTP** — FastAPI routers under `backend/routes/`, wired in `backend/main.py`.
-- **Persistence** — Session per request via `get_db()` (`backend/database.py`).
-- **Domain** — SQLAlchemy models (`backend/models.py`); validation DTOs (`backend/schemas.py`).
-- **Browser UI** — Single file **`frontend/public/index.html`**: embedded CSS, vanilla JS (no bundler/framework), tab panels, **`fetch`** to the FastAPI server; inline errors and loading overlays per tab.
-
----
+# Architecture notes — FlightHub
 
 ## Data model
 
-### Entities
+SQLite, one file under `backend/` (`flighthub.db`). SQLAlchemy models in `backend/models.py`.
 
-**`flights`**
+### `flights`
 
-| Column | Type | Notes |
-|--------|------|--------|
-| `id` | integer | Primary key |
-| `origin` | string | Required |
-| `destination` | string | Required |
-| `departure_datetime` | datetime (tz-aware, stored as UTC) | Single departure instant |
-| `duration_minutes` | integer | Block time |
-| `price_per_seat` | float | Quoted price |
-| `total_seats` | integer | Capacity |
-| `available_seats` | integer | **Authoritative** remaining inventory for booking rules |
+Stores what you can sell a seat on.
 
-**`bookings`**
+| Column | Why it’s there |
+|--------|----------------|
+| `id` | Primary key; frontend and bookings reference this. |
+| `origin` / `destination` | Human-readable route; search filters match these (case-insensitive). |
+| `departure_datetime` | Actual departure instant; search by “date” uses the UTC calendar day containing this. |
+| `duration_minutes` | Block time for the leg; shown in the UI as hours/minutes. |
+| `price_per_seat` | What we quote per passenger. |
+| `total_seats` | Aircraft/seat capacity (mostly informational next to available). |
+| `available_seats` | **Source of truth for inventory.** Booking decrements it; cancel increments it. When it hits 0, new bookings get 409. |
 
-| Column | Type | Notes |
-|--------|------|--------|
-| `id` | integer | Primary key |
-| `booking_reference` | string | **Unique**, generated server-side |
-| `flight_id` | integer | FK → `flights.id` |
-| `passenger_name` | string | Required |
-| `passport_number` | string | Required |
-| `seat_number` | string | Required (client-chosen label; see concurrency note below) |
-| `status` | string | Default `confirmed`; used for cancellation |
-| `created_at` | datetime (tz-aware UTC) | Audit |
+### `bookings`
 
-**Relationships**
+One row per reservation.
 
-- `Flight.bookings` ↔ `Booking.flight` (many-to-one).
+| Column | Why it’s there |
+|--------|----------------|
+| `id` | Internal PK. |
+| `booking_reference` | Short public id (8 hex chars from UUID); staff/passengers use this for lookup and cancel. Unique. |
+| `flight_id` | FK to `flights.id`; ties the booking to a route and schedule. |
+| `passenger_name` | Searchable; displayed in UI. |
+| `passport_number` | Required identity field from the brief. |
+| `seat_number` | What the passenger picked (label only — we don’t model a full seat map). |
+| `status` | `confirmed` vs `cancelled`; cancel is a soft update, not a hard delete. |
+| `created_at` | Audit / sorting. |
 
-```mermaid
-erDiagram
-  Flight ||--o{ Booking : has
-  Flight {
-    int id PK
-    string origin
-    string destination
-    datetime departure_datetime
-    int duration_minutes
-    float price_per_seat
-    int total_seats
-    int available_seats
-  }
-  Booking {
-    int id PK
-    string booking_reference UK
-    int flight_id FK
-    string passenger_name
-    string passport_number
-    string seat_number
-    string status
-    datetime created_at
-  }
-```
-
-### Seed data
-
-On startup, if `flights` is empty, the app inserts **8** sample rows with varied routes, pricing, and availability—including **two flights with only one seat left** to exercise capacity edge cases in tests and demos.
+Relationship: many bookings → one flight. Responses often embed the nested `flight` for convenience.
 
 ---
 
 ## API design
 
-### Conventions
+Base URL: **`http://localhost:8000`** (see also `/docs`).
 
-- **Success** — `2xx` with JSON bodies matching Pydantic schemas where applicable.
-- **Validation** — Invalid body/query (e.g. bad date format) → **`422`** with clear `detail`.
-- **Not found** — Missing resource or empty search (where specified) → **`404`** with an explicit string `detail` for UX and tests.
-- **CORS** — `allow_origins` includes **`http://localhost:3000`** and **`http://127.0.0.1:3000`** so the same UI works whether staff open the site via **`localhost`** or **`127.0.0.1`** (the browser **`Origin`** header must match an allowed entry exactly).
+| Method | Path | Purpose | Typical responses |
+|--------|------|---------|-------------------|
+| GET | `/health` | Liveness check | **200** `{"status":"ok"}` |
+| GET | `/flights` | List all flights | **200** JSON array of flights |
+| GET | `/flights/search` | Filter by `origin`, `destination`, `date` (query params, all optional) | **200** array; **404** no matches; **422** bad date string |
+| GET | `/flights/{flight_id}` | Single flight | **200** flight; **404** not found |
+| POST | `/bookings` | Create booking (JSON body: `flight_id`, `passenger_name`, `passport_number`, `seat_number`) | **201** booking + nested flight; **404** flight missing; **409** no seats; **422** validation |
+| GET | `/bookings` | Search: need at least one of `passenger_name`, `booking_reference` (query) | **200** array; **400** if both empty |
+| DELETE | `/bookings/{booking_reference}` | Cancel booking | **200** cancellation payload; **404** unknown ref; **409** already cancelled |
 
-### Flights (implemented)
-
-| Method & path | Purpose | Responses |
-|---------------|---------|-----------|
-| `GET /flights` | List all flights | **200** — `[FlightResponse, …]` |
-| `GET /flights/search` | Optional query: `origin`, `destination`, `date` (`YYYY-MM-DD`) | **200** — matches; **404** — `No flights found matching your criteria`; **422** — invalid `date` |
-| `GET /flights/{flight_id}` | Flight by id | **200** — `FlightResponse`; **404** — `Flight not found` |
-
-**Filtering rules**
-
-- **Origin / destination** — Case-insensitive **equality** on stored city strings (normalized with `lower()` on both sides).
-- **Date** — Interpret `date` as a **UTC calendar day**: `[day 00:00:00 UTC, next day 00:00:00 UTC)`. This fixes ambiguity between “date only” in the UI and a full timestamp in the database.
-
-### Bookings (implemented — `backend/routes/bookings.py`)
-
-| Method & path | Purpose | Responses |
-|---------------|---------|-----------|
-| `POST /bookings` | Create booking (`BookingCreate`) | **201** — `BookingResponse` (nested `flight`); **404** — `Flight not found`; **409** — `No seats available on this flight` |
-| `GET /bookings` | Search by `passenger_name` (optional) and/or `booking_reference` (optional) | **200** — `[BookingResponse, …]` with `selectinload(flight)`; **400** — `Provide passenger_name or booking_reference to search` if both missing/blank |
-| `DELETE /bookings/{booking_reference}` | Cancel by reference | **200** — `CancellationResponse`; **404** — `Booking not found`; **409** — `Booking is already cancelled` |
-
-**Create flow (order enforced in code)**
-
-1. Load **`Flight`** by **`flight_id`** — **404** if missing.
-2. If **`available_seats <= 0`** — **409** with the message above (no negative inventory).
-3. Generate **`booking_reference`**: **`uuid.uuid4().hex[:8].upper()`** (8 hex characters; unique in DB via column constraint).
-4. Insert **`Booking`** with **`status="confirmed"`**, decrement **`available_seats`** by 1, **`commit`**.
-
-**Search rules**
-
-- At least one of **`passenger_name`** or **`booking_reference`** must be provided (non-empty after strip); otherwise **400**.
-- **Name** — case-insensitive **substring** match (`instr` on lowercased columns).
-- **Reference** — **exact** string match.
-- If **both** query params are present, filters combine with **`OR`** (broader lookup consistent with “name or reference” in `TASK.md`).
-
-**Cancellation**
-
-- **Soft cancel:** set **`status`** to **`cancelled`**, increment **`flight.available_seats`** by **1**, **`commit`**. Second cancel on the same reference → **409**.
+CORS allows the local UI on **`http://localhost:3000`** and **`http://127.0.0.1:3000`** so either hostname works in the browser.
 
 ---
 
-## Testing
+## Ambiguity decisions (from the brief)
 
-Automated API tests live under **`tests/`** (`pytest` + Starlette **`TestClient`**). They exercise **real** FastAPI routing and **real** SQLAlchemy persistence—**no** mocked database layer.
+**Overbooking:** First-come-first-served using `available_seats`. When it would go below zero we reject instead — **409** *“No seats available on this flight”*. No waitlist: it’s a tiny internal tool and the brief leans toward something simple we can reason about and test.
 
-| File | Role |
-|------|------|
-| **`tests/conftest.py`** | **Autouse** fixture: in-memory SQLite engine with **`StaticPool`** (required so `:memory:` is shared across connections); **`drop_all` / `create_all`** each test; seed **two** `Flight` rows (**`available_seats`** **1** and **5**); **`monkeypatch`** `backend.database` and **`backend.main`** (`engine`, `SessionLocal`, no-op **`_seed_sample_flights_if_empty`**) so startup never writes **`flighthub.db`**; **`app.dependency_overrides[get_db]`** yields sessions bound to the test engine. |
-| **`tests/test_api.py`** | Six tests: list flights (**200**, non-empty), search by origin (**200**, matching rows), successful booking (**201**, **`booking_reference`**, **`confirmed`**), **overbooking** on the single-seat flight (**201** then **409**—**business rule**), cancel restores **inventory**, double cancel (**409**). |
-
-Run from repo root: **`python -m pytest tests/test_api.py -v`**.
-
----
-
-## Frontend (SPA)
-
-| Topic | Detail |
-|--------|--------|
-| **Delivery** | Express (`frontend/app.js`) serves **`public/`**; all UI lives in **`index.html`** (no separate JS bundle). |
-| **API usage** | **`API_BASE = "http://localhost:8000"`** — `GET /flights`, `GET /flights/search`, `POST /bookings`, `GET /bookings`, `DELETE /bookings/{reference}`. |
-| **Integration** | **CORS** must allow the **exact** page origin (`localhost` vs `127.0.0.1`). The UI uses **`fetch`**; a **syntax error** in the inline script prevents **any** request from firing—validate with a JS syntax check when debugging “blank / no network” issues. |
-| **Caching** | HTML includes a **no-cache** meta for smoother local iteration; hard refresh if the browser serves a stale `index.html`. |
-
----
-
-## How ambiguities were resolved
-
-### 1. “Handle overbooking appropriately” (`TASK.md`)
-
-**Decision:** **Reject** a new booking when there is **no remaining inventory**: `available_seats <= 0` before the transaction commits.
-
-**Mechanism (implemented in `POST /bookings`):** Flight load, **`available_seats`** check, booking insert, and seat decrement run in **one `Session` transaction** ending in **`commit`**. Under concurrency, the second request for the last seat should see **`available_seats <= 0`** and receive **409** with *“No seats available on this flight.”* (SQLite serializes writers; a future **`SELECT … FOR UPDATE`** could tighten this on other engines.)
-
-**Rationale:** The agency must never show negative availability or silently double-sell the last seat. Failing fast with a **specific error** is clearer than a waitlist or queue, which are out of scope for this tool.
-
-**Seat number:** The client supplies a **seat label** (e.g. `12A`). The server **does not** model a per-seat matrix in v1; **capacity** is enforced only via **`available_seats`**. Double assignment of the same seat label is acceptable for this assessment unless extended with a uniqueness constraint per flight later.
-
-### 2. “Display relevant flight information” / UI priorities (`TASK.md`)
-
-**Decision:** The **Express** UI will prioritize, in order:
-
-1. **Browse & search** — Table (or cards) of flights with **origin, destination, departure (local or ISO), duration, price, seats available**; search fields for origin, destination, and date.
-2. **Book** — Form: flight id (or pick from list), passenger name, passport, seat; show **API errors** inline.
-3. **Look up & cancel** — Inputs for **booking reference** and/or **passenger name**; list results with **status** and **flight summary**; cancel by reference with confirmation.
-
-**Rationale:** Staff workflow is **find a flight → book → later find/cancel**; the layout follows that sequence with minimal chrome.
-
-### 3. Other small design choices
-
-| Topic | Resolution |
-|--------|------------|
-| **Empty flight search** | **`404`** with fixed copy (as implemented) so the UI can distinguish “no matches” from “success + empty list” on list-all. |
-| **Booking reference format** | **Server-generated** **8-character uppercase hex** from **`uuid4`** (`hex[:8]`); not client-supplied. |
-| **Cancellation** | **Soft** cancel: **`status = cancelled`** and **`available_seats += 1`** on the related flight (`DELETE /bookings/{booking_reference}`). |
-
-
+**UI layout:** For agency staff the important thing is deciding *where* and *how much*, so the SPA foregrounds **route** and **price** on each card, with time/duration/seats secondary but still visible.
