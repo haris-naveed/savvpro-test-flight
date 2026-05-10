@@ -99,15 +99,44 @@ On startup, if `flights` is empty, the app inserts **8** sample rows with varied
 - **Origin / destination** — Case-insensitive **equality** on stored city strings (normalized with `lower()` on both sides).
 - **Date** — Interpret `date` as a **UTC calendar day**: `[day 00:00:00 UTC, next day 00:00:00 UTC)`. This fixes ambiguity between “date only” in the UI and a full timestamp in the database.
 
-### Bookings (planned; models & schemas ready)
+### Bookings (implemented — `backend/routes/bookings.py`)
 
-Aligned with `TASK.md`; endpoints will live on a dedicated router (e.g. `/bookings`) and use `BookingCreate`, `BookingResponse`, and `CancellationResponse`:
+| Method & path | Purpose | Responses |
+|---------------|---------|-----------|
+| `POST /bookings` | Create booking (`BookingCreate`) | **201** — `BookingResponse` (nested `flight`); **404** — `Flight not found`; **409** — `No seats available on this flight` |
+| `GET /bookings` | Search by `passenger_name` (optional) and/or `booking_reference` (optional) | **200** — `[BookingResponse, …]` with `selectinload(flight)`; **400** — `Provide passenger_name or booking_reference to search` if both missing/blank |
+| `DELETE /bookings/{booking_reference}` | Cancel by reference | **200** — `CancellationResponse`; **404** — `Booking not found`; **409** — `Booking is already cancelled` |
 
-- **Create booking** — Validate input, ensure flight exists, enforce **overbooking rule** (below), decrement `available_seats`, persist booking with a **new unique `booking_reference`**.
-- **List / lookup** — By passenger name and/or booking reference; return nested **flight details** in each `BookingResponse`.
-- **Cancel** — By reference: mark booking cancelled (or delete, per final choice), increment `available_seats` on the flight, return a small **cancellation** payload.
+**Create flow (order enforced in code)**
 
-HTTP mapping will follow the same style: **404** for unknown flight/reference, **409** or **422** when a business rule blocks the action (see overbooking).
+1. Load **`Flight`** by **`flight_id`** — **404** if missing.
+2. If **`available_seats <= 0`** — **409** with the message above (no negative inventory).
+3. Generate **`booking_reference`**: **`uuid.uuid4().hex[:8].upper()`** (8 hex characters; unique in DB via column constraint).
+4. Insert **`Booking`** with **`status="confirmed"`**, decrement **`available_seats`** by 1, **`commit`**.
+
+**Search rules**
+
+- At least one of **`passenger_name`** or **`booking_reference`** must be provided (non-empty after strip); otherwise **400**.
+- **Name** — case-insensitive **substring** match (`instr` on lowercased columns).
+- **Reference** — **exact** string match.
+- If **both** query params are present, filters combine with **`OR`** (broader lookup consistent with “name or reference” in `TASK.md`).
+
+**Cancellation**
+
+- **Soft cancel:** set **`status`** to **`cancelled`**, increment **`flight.available_seats`** by **1**, **`commit`**. Second cancel on the same reference → **409**.
+
+---
+
+## Testing
+
+Automated API tests live under **`tests/`** (`pytest` + Starlette **`TestClient`**). They exercise **real** FastAPI routing and **real** SQLAlchemy persistence—**no** mocked database layer.
+
+| File | Role |
+|------|------|
+| **`tests/conftest.py`** | **Autouse** fixture: in-memory SQLite engine with **`StaticPool`** (required so `:memory:` is shared across connections); **`drop_all` / `create_all`** each test; seed **two** `Flight` rows (**`available_seats`** **1** and **5**); **`monkeypatch`** `backend.database` and **`backend.main`** (`engine`, `SessionLocal`, no-op **`_seed_sample_flights_if_empty`**) so startup never writes **`flighthub.db`**; **`app.dependency_overrides[get_db]`** yields sessions bound to the test engine. |
+| **`tests/test_api.py`** | Six tests: list flights (**200**, non-empty), search by origin (**200**, matching rows), successful booking (**201**, **`booking_reference`**, **`confirmed`**), **overbooking** on the single-seat flight (**201** then **409**—**business rule**), cancel restores **inventory**, double cancel (**409**). |
+
+Run from repo root: **`python -m pytest tests/test_api.py -v`**.
 
 ---
 
@@ -117,7 +146,7 @@ HTTP mapping will follow the same style: **404** for unknown flight/reference, *
 
 **Decision:** **Reject** a new booking when there is **no remaining inventory**: `available_seats <= 0` before the transaction commits.
 
-**Mechanism (intended implementation):** Perform flight load + capacity check + insert booking + decrement seats inside **one database transaction**. Optionally verify **`available_seats > 0`** again immediately before update to reduce race windows; if two requests compete for the last seat, one succeeds and the other gets **`409 Conflict`** (or **`422`**) with a clear message such as *“No seats available on this flight.”*
+**Mechanism (implemented in `POST /bookings`):** Flight load, **`available_seats`** check, booking insert, and seat decrement run in **one `Session` transaction** ending in **`commit`**. Under concurrency, the second request for the last seat should see **`available_seats <= 0`** and receive **409** with *“No seats available on this flight.”* (SQLite serializes writers; a future **`SELECT … FOR UPDATE`** could tighten this on other engines.)
 
 **Rationale:** The agency must never show negative availability or silently double-sell the last seat. Failing fast with a **specific error** is clearer than a waitlist or queue, which are out of scope for this tool.
 
@@ -138,7 +167,7 @@ HTTP mapping will follow the same style: **404** for unknown flight/reference, *
 | Topic | Resolution |
 |--------|------------|
 | **Empty flight search** | **`404`** with fixed copy (as implemented) so the UI can distinguish “no matches” from “success + empty list” on list-all. |
-| **Booking reference format** | **Opaque unique string** (e.g. UUID or short alphanumeric) generated **only on the server**; not client-supplied. |
-| **Cancellation** | **Soft** status change vs **hard** delete TBD in implementation; either way **`available_seats` must increase** when a confirmed seat is released. |
+| **Booking reference format** | **Server-generated** **8-character uppercase hex** from **`uuid4`** (`hex[:8]`); not client-supplied. |
+| **Cancellation** | **Soft** cancel: **`status = cancelled`** and **`available_seats += 1`** on the related flight (`DELETE /bookings/{booking_reference}`). |
 
 

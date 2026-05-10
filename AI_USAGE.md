@@ -95,11 +95,58 @@ This file is the **AI usage log** for this repository, as required by the assess
 
 ---
 
+## Session 5 — Booking routes (`backend/routes/bookings.py`) + router registration
+
+### Specific prompts I used
+
+1. “Create `backend/routes/bookings.py` with `APIRouter` prefix `/bookings`. **POST `/bookings`** — accepts `BookingCreate` body. Rules in order: check flight exists (**404** if not); check **`available_seats > 0`**, if zero return **409** with detail **`No seats available on this flight`**; generate **`booking_reference`**: take **`uuid4`**, uppercase first **8** chars; decrement **`available_seats`** by 1; save booking status **confirmed**; commit and return **`BookingResponse`** with **201**. **GET `/bookings`** — query params **`passenger_name`** optional or **`booking_reference`** optional; if neither provided return **400** **`Provide passenger_name or booking_reference to search`**; search **`passenger_name`** case insensitive **contains** match, **`booking_reference`** **exact** match; return list of **`BookingResponse`** with nested **`flight`**. **DELETE `/bookings/{booking_reference}`** — find booking, **404** if not found; if status already cancelled return **409** **`Booking is already cancelled`**; set status to **cancelled**, increment **`flight.available_seats`** by 1, commit; return **`CancellationResponse`**. Register this router in **`main.py`.”
+
+### Mistakes the AI made and how I corrected them
+
+| Mistake | How I corrected it |
+|--------|----------------------|
+| The first draft used **`func.instr`** for passenger substring search but **forgot to import `func`** from SQLAlchemy, which would **fail at import time**. | I added **`from sqlalchemy import func, or_, select`** and re-ran **`TestClient`** checks. |
+| The prompt did not spell out **combining both** search fields when a user sends **`passenger_name` and `booking_reference` together**. | I chose **`OR`** (match name contains **or** reference equals) so results align with “lookup by name **or** reference” in `TASK.md` rather than over-narrow **AND**. |
+| Risk: **`BookingResponse`** requires a nested **`flight`**; lazy loading can surprise you if the session is configured oddly. | After **`commit`**, I **refresh** the booking and touch **`booking.flight`** (or rely on **`selectinload`** on **GET**) so serialization always sees the related **`Flight`**. |
+
+### How I directed the AI (I led; the AI did not lead)
+
+- I specified a **strict ordering** of checks (**existence → capacity → reference → inventory mutation → commit**) and **exact HTTP status / `detail` strings** for **409/400/404** cases.
+- I required **`uuid4`-derived references** (8-char uppercase hex from **`hex[:8]`**, equivalent to “first 8” of the hyphen-free form) and **`status="confirmed"`** on create.
+- I scoped work to **`bookings.py` + `main.py` router include**—no unrelated refactors.
+- I **verified** create/search/cancel flows against a **single-seat** seeded flight (second booking → **409**; after cancel → book again succeeds).
+
+---
+
+## Session 6 — Pytest API tests (`tests/test_api.py`, `tests/conftest.py`)
+
+### Specific prompts I used
+
+1. “Write tests in **`tests/test_api.py`** using **pytest** and FastAPI **`TestClient`**. **Setup:** use an **in-memory SQLite** database for tests, **override the `get_db` dependency** so tests **never touch `flighthub.db`**, **`create_all` tables fresh before each test**, seed **two flights**: one with **`available_seats=1`**, one with **`available_seats=5`**. Write these **6 tests**: **`test_get_flights`** — `GET /flights` returns **200** and a non-empty list; **`test_search_by_origin`** — search by a seeded origin returns **200** and matching results; **`test_book_flight_success`** — `POST /bookings` with valid data returns **201**, response has **`booking_reference`**, status **confirmed**; **`test_overbooking_blocked`** — book the single-seat flight twice, first **201**, second **409**; **`test_cancel_booking`** — book then cancel, cancel **200** and status cancelled, then check **`available_seats`** went back up by **1**; **`test_cancel_twice`** — cancel same booking twice, second **409**. **No mocking** — use **real SQLAlchemy** against in-memory DB.”
+
+### Mistakes the AI made and how I corrected them
+
+| Mistake | How I corrected it |
+|--------|----------------------|
+| The first implementation used **`sqlite:///:memory:`** with the default pool; **each new DB connection gets its own empty in-memory database**, so **`create_all` + seed** on one connection did not match **`TestClient`** / **`get_db`** on another → **`no such table: flights`**. | I switched the test engine to use **`sqlalchemy.pool.StaticPool`** so **all sessions share one connection** and one in-memory database. |
+| **`Startup`** still imports **`engine`** into **`main`** by value; tests must **monkeypatch both** **`backend.database.engine`** and **`backend.main.engine`** (and **`SessionLocal`** in both modules) so **`create_all` on startup** hits the test engine, not **`flighthub.db`**. | I patched **`main.engine`**, **`main.SessionLocal`**, and disabled production **`_seed_sample_flights_if_empty`** in tests so only the **two** fixture flights exist. |
+
+### How I directed the AI (I led; the AI did not lead)
+
+- I required **isolation** from disk **`flighthub.db`** via **`dependency_overrides[get_db]`** plus engine/session **monkeypatches**, and **fresh schema + seed per test** (`drop_all` / `create_all` in an **autouse** fixture).
+- I listed **exact test names** and **assertions** (status codes, overbooking **409**, double-cancel **409**, inventory **±1** after cancel).
+- I insisted on **no mocks** for the ORM—only **real** SQLAlchemy + **`TestClient`** HTTP calls.
+- I **ran `pytest tests/test_api.py -v`** and iterated until all **six** tests passed.
+
+---
+
 ## Commands I ran to verify (optional trace)
 
 - `uvicorn main:app --reload` from repo root — confirm server starts after import fixes.
+- `python -m pytest tests/test_api.py -v` — **6** API tests against in-memory SQLite.
 - `python -c` / `TestClient` against `backend.main` — confirm startup, `create_all`, and seed insert **8** flights.
 - `python -c` / `TestClient` — **`GET /flights`**, **`GET /flights/{id}`**, **`GET /flights/search`** (match / no match / invalid date).
+- `python -c` / `TestClient` — **`POST /bookings`**, **`GET /bookings`**, **`DELETE /bookings/{ref}`** (capacity, search, double-cancel **409**, **400** with no query params).
 - `python -c` imports / `BookingCreate(...)` cases — confirm strip, blank rejection, and `min_length` after strip for `backend/schemas.py`.
 - `npm install` / `npm start` — confirm the Express scaffold serves `public/` when I exercise the frontend.
 
