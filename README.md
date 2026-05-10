@@ -1,56 +1,35 @@
-# Step-by-Step Guide: How to Fork, Clone, and Submit Your Assessment
+# FlightHub
 
-Follow these instructions to participate in the test.
+Small full-stack app for a fake travel agency: FastAPI + SQLite in the back, Express serving a vanilla HTML/JS UI on port 3000. Staff can list/search flights, book seats, look up bookings, and cancel.
 
-### 1. **Fork the Repository**
-1. Go to the repository: [https://github.com/savvpro/savvpro-test-flight](https://github.com/savvpro/savvpro-test-flight)
-2. In the top-right corner of the page, click the **Fork** button.
-3. This will create a copy of the repository in your GitHub account.
+**Prerequisites:** Python **3.10+**, Node **18+**.
 
-### 2. **Clone Your Fork**
-1. After forking, go to your GitHub account and open your **forked repository**.
-2. Click on the green **Code** button and copy the URL.
-3. Open your terminal and run the following command to clone your fork:
-   ```bash
-   git clone https://github.com/your-username/savvpro-test-flight.git
-   ```
-4. Navigate into the cloned directory:
-   ```bash
-   cd savvpro-test-flight
-   ```
+### Backend
 
-### 3. **Read the Task**
-1. Open and read [`TASK.md`](https://github.com/savvpro/savvpro-test-flight/blob/main/TASK.md) carefully before writing any code.
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Unix:   source .venv/bin/activate
+pip install -r backend/requirements.txt
+uvicorn main:app --reload --app-dir backend
+```
 
-### 4. **Create a New Branch**
-1. Before making any changes, create a new branch using the following naming pattern:
-   ```
-   candidate-<your-github-username>
-   ```
-   Run:
-   ```bash
-   git checkout -b candidate-<your-github-username>
-   ```
-   **Example:**
-   ```bash
-   git checkout -b candidate-johndoe
-   ```
+API listens on **http://localhost:8000** (or use **127.0.0.1** — same thing for local dev).
 
-### 5. **Complete the Task**
-Build the full application on your branch. 
+### Frontend
 
-### 6. **Push Your Branch**
-1. Commit your final changes:
-   ```bash
-   git add .
-   git commit -m "feat: complete FlightHub assessment"
-   ```
-2. Push your branch to your fork:
-   ```bash
-   git push origin candidate-<your-github-username>
-   ```
+```bash
+cd frontend
+npm install
+node app.js
+```
 
----
+UI is at **http://localhost:3000**. **Start the backend first**, then the frontend — the page calls the API on port 8000 and will look broken if nothing is listening there.
 
-### **Important Notes**
-- **No submissions will be accepted after the deadline.**
+### Tests
+
+```bash
+cd backend && pytest ../tests/ -v
+```
+
+If that complains it can’t import `backend`, run from the project root instead: `python -m pytest tests/ -v` (same venv, `pip install -r backend/requirements.txt` already done).
