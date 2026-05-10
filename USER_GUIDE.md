@@ -1,8 +1,10 @@
-# User guide — FlightHub API
+# User guide — FlightHub API & UI
 
 Assume the API is running at **`http://localhost:8000`**. Swap in **127.0.0.1** if that’s what you use.
 
 Interactive docs (try requests in the browser): **http://localhost:8000/docs**
+
+The **web app** is served by Express at **`http://localhost:3000`** (or **`http://127.0.0.1:3000`**). Start the backend first, then run **`node app.js`** from the **`frontend/`** folder — see **`README.md`**.
 
 ---
 
@@ -27,6 +29,16 @@ You’ll get **404** with a JSON `detail` if nothing matches. **422** if `date` 
 ---
 
 ### Book a flight
+
+#### In the FlightHub UI
+
+1. Open the **Book a flight** tab.
+2. **Flight** is a **dropdown** loaded from **`GET /flights`**. Each option shows the flight id, route (origin → destination), price per seat, and how many seats are left. The **first** flight in the list is **selected automatically** when data loads.
+3. The preview card on the left updates when you change the selection (it loads details with **`GET /flights/{id}`**).
+4. You can also click **Select & Book** on any card under **All Flights** or **Search**; that switches to this tab and selects that flight in the dropdown.
+5. Fill in **full name**, **passport number**, and **seat**, then **Confirm booking**. On success you’ll see a **booking reference**; the dropdown **refreshes** so seat counts stay accurate (your flight stays selected when it still exists). **409** means no seats left; **422** means validation failed (shown inline).
+
+#### With curl (API)
 
 **POST** JSON body with **`flight_id`**, **`passenger_name`**, **`passport_number`**, **`seat_number`**:
 

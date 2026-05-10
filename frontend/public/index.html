@@ -332,6 +332,290 @@
       color: var(--danger);
     }
 
+    /* —— Book a flight —— */
+    .book-page {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .book-page-intro {
+      margin-bottom: 1.5rem;
+    }
+
+    .book-page-title {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: var(--blue-900);
+      letter-spacing: -0.03em;
+      margin: 0 0 0.35rem;
+    }
+
+    .book-page-lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.5;
+      max-width: 36rem;
+    }
+
+    .book-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 440px);
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .book-aside {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .book-preview-card {
+      background: linear-gradient(145deg, #ffffff 0%, var(--blue-50) 100%);
+      border: 1px solid #d6e6f7;
+      border-radius: 16px;
+      padding: 1.25rem 1.35rem;
+      box-shadow: 0 8px 32px rgba(12, 45, 92, 0.08);
+    }
+
+    .book-preview-heading {
+      margin: 0 0 0.75rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--blue-700);
+    }
+
+    .book-preview-content {
+      min-height: 7.5rem;
+    }
+
+    .book-preview-placeholder {
+      margin: 0;
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .book-preview-error {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #a61e35;
+    }
+
+    .book-preview-route {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--blue-900);
+      margin: 0 0 0.5rem;
+      line-height: 1.25;
+    }
+
+    .book-preview-meta {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0.2rem 0;
+    }
+
+    .book-preview-price {
+      margin-top: 0.75rem;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--blue-700);
+    }
+
+    .book-preview-seats {
+      margin-top: 0.35rem;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+
+    .book-tips {
+      margin: 0;
+      padding: 0 0 0 1.15rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .book-tips li {
+      margin-bottom: 0.35rem;
+    }
+
+    .book-form-shell {
+      position: relative;
+    }
+
+    .book-form-card {
+      background: var(--white);
+      border-radius: 18px;
+      border: 1px solid #e2ecf7;
+      box-shadow:
+        0 4px 6px rgba(12, 45, 92, 0.04),
+        0 12px 40px rgba(21, 74, 140, 0.1);
+      overflow: hidden;
+    }
+
+    .book-form-card-head {
+      background: linear-gradient(120deg, var(--blue-900) 0%, var(--blue-700) 55%, var(--blue-500) 100%);
+      color: var(--white);
+      padding: 1.35rem 1.5rem 1.5rem;
+      position: relative;
+    }
+
+    .book-form-card-head::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--blue-400), #7eb8ff, var(--blue-400));
+      opacity: 0.85;
+    }
+
+    .book-form-card-eyebrow {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      opacity: 0.85;
+      margin-bottom: 0.35rem;
+    }
+
+    .book-form-card-title {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .book-form-card-body {
+      padding: 1.35rem 1.5rem 1.6rem;
+    }
+
+    .book-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+    }
+
+    .book-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem 1.1rem;
+    }
+
+    @media (max-width: 520px) {
+      .book-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .book-field-flight {
+      grid-column: 1 / -1;
+    }
+
+    .book-field-flight label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .book-field-flight .field-hint {
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.72rem;
+      color: var(--blue-500);
+    }
+
+    .book-field-flight select,
+    .book-field-flight input {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.85rem 1rem;
+      border: 2px solid #c5d4e8;
+      border-radius: 12px;
+      background: var(--white);
+      width: 100%;
+      color: var(--text);
+    }
+
+    .book-field-flight select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23154a8c' d='M1.4 0L6 4.6 10.6 0 12 1.4l-6 6-6-6z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+    }
+
+    .book-field-flight select:focus {
+      outline: none;
+      border-color: var(--blue-500);
+      box-shadow: 0 0 0 3px rgba(30, 111, 217, 0.2);
+    }
+
+    .book-form .field input {
+      border-radius: 10px;
+      padding: 0.72rem 0.9rem;
+    }
+
+    .book-form .field label {
+      text-transform: none;
+      letter-spacing: 0.02em;
+      font-size: 0.8rem;
+      color: var(--blue-900);
+      font-weight: 600;
+    }
+
+    .book-submit-wrap {
+      margin-top: 0.25rem;
+      padding-top: 1rem;
+      border-top: 1px solid #edf2f8;
+    }
+
+    .book-submit-btn {
+      width: 100%;
+      padding: 0.9rem 1.25rem;
+      font-size: 1rem;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 14px rgba(30, 111, 217, 0.35);
+    }
+
+    .book-submit-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    #tab-book .msg-success {
+      margin: 0 1.5rem 1rem;
+      border-radius: 12px;
+      border: 1px solid #9dd9b8;
+      box-shadow: 0 4px 20px rgba(13, 122, 79, 0.12);
+    }
+
+    #tab-book #book-error {
+      margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .book-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .book-form-shell {
+        order: -1;
+      }
+    }
+
     @media (max-width: 520px) {
       .app-header h1 {
         font-size: 1.2rem;
@@ -397,32 +681,76 @@
     </section>
 
     <section id="tab-book" class="tab-panel" role="tabpanel">
-      <h2 class="panel-title">Book a Flight</h2>
-      <div id="book-error"></div>
-      <div id="book-success" class="msg msg-success" style="display: none;">
-        <strong>Booking confirmed</strong>
-        <p class="booking-ref-big" id="book-ref-display"></p>
-        <p style="margin: 0.5rem 0 0; font-size: 0.9rem;">Save your reference for My Bookings.</p>
+      <div class="book-page">
+        <header class="book-page-intro">
+          <h2 class="book-page-title">Book a flight</h2>
+          <p class="book-page-lead">
+            Reserve a seat in a few steps. You’ll get a booking reference to use under <strong>My Bookings</strong>.
+          </p>
+        </header>
+
+        <div class="book-layout">
+          <aside class="book-aside" aria-label="Flight preview">
+            <div class="book-preview-card">
+              <h3 class="book-preview-heading">Flight preview</h3>
+              <div id="book-preview-content" class="book-preview-content">
+                <p class="book-preview-placeholder">
+                  Choose a flight from the list, or tap <strong>Select&nbsp;&amp;&nbsp;Book</strong> on a card in <strong>All Flights</strong> or <strong>Search</strong> to jump here with that flight selected.
+                </p>
+              </div>
+            </div>
+            <ul class="book-tips">
+              <li>Use the passport number exactly as on the travel document.</li>
+              <li>Seat is a label you choose (e.g. 12A); capacity is enforced by the system.</li>
+            </ul>
+          </aside>
+
+          <div class="book-form-shell">
+            <div class="book-form-card">
+              <div class="book-form-card-head">
+                <span class="book-form-card-eyebrow">New reservation</span>
+                <h3 class="book-form-card-title">Passenger &amp; seat</h3>
+              </div>
+              <div id="book-success" class="msg msg-success" style="display: none; margin: 1rem 1.5rem 0;">
+                <strong>Booking confirmed</strong>
+                <p class="booking-ref-big" id="book-ref-display"></p>
+                <p style="margin: 0.5rem 0 0; font-size: 0.9rem;">Save your reference for My Bookings.</p>
+              </div>
+              <div class="book-form-card-body">
+                <div id="book-error"></div>
+                <form id="book-form" class="book-form" novalidate>
+                  <div class="book-form-grid">
+                    <div class="field book-field-flight">
+                      <label for="book-flight-id">Flight <span class="field-hint">choose one</span></label>
+                      <select id="book-flight-id" name="flight_id" required aria-label="Select flight to book">
+                        <option value="">Loading flights…</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="book-name">Full name</label>
+                      <input id="book-name" type="text" required autocomplete="name" placeholder="As on passport">
+                    </div>
+                    <div class="field">
+                      <label for="book-passport">Passport number</label>
+                      <input id="book-passport" type="text" required autocomplete="off" placeholder="e.g. AB1234567">
+                    </div>
+                    <div class="field" style="grid-column: 1 / -1;">
+                      <label for="book-seat">Seat</label>
+                      <input id="book-seat" type="text" required autocomplete="off" placeholder="e.g. 12A">
+                    </div>
+                  </div>
+                  <div class="book-submit-wrap">
+                    <button type="submit" class="btn btn-primary book-submit-btn" id="book-submit">
+                      <span aria-hidden="true">✓</span>
+                      Confirm booking
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <form id="book-form" class="toolbar" style="flex-direction: column; align-items: stretch;">
-        <div class="field" style="max-width: 320px;">
-          <label for="book-flight-id">Flight ID</label>
-          <input id="book-flight-id" type="number" min="1" step="1" required placeholder="e.g. 3">
-        </div>
-        <div class="field">
-          <label for="book-name">Passenger full name</label>
-          <input id="book-name" type="text" required autocomplete="name" placeholder="Full name">
-        </div>
-        <div class="field">
-          <label for="book-passport">Passport number</label>
-          <input id="book-passport" type="text" required autocomplete="off" placeholder="Passport number">
-        </div>
-        <div class="field">
-          <label for="book-seat">Seat number</label>
-          <input id="book-seat" type="text" required autocomplete="off" placeholder="e.g. 12A">
-        </div>
-        <button type="submit" class="btn btn-primary" id="book-submit" style="align-self: flex-start;">Submit booking</button>
-      </form>
     </section>
 
     <section id="tab-bookings" class="tab-panel" role="tabpanel">
@@ -448,6 +776,106 @@
   <script>
     (function () {
       const API_BASE = "http://localhost:8000";
+      function setBookPreviewPlaceholder() {
+        var panel = document.getElementById("book-preview-content");
+        if (!panel) return;
+        panel.innerHTML =
+          '<p class="book-preview-placeholder">' +
+          "Choose a flight from the dropdown, or use <strong>Select&nbsp;&amp;&nbsp;Book</strong> on a flight card." +
+          "</p>";
+      }
+
+      function bookFlightOptionText(f) {
+        return (
+          "#" +
+          f.id +
+          " · " +
+          f.origin +
+          " → " +
+          f.destination +
+          " · " +
+          formatPrice(f.price_per_seat) +
+          " · " +
+          f.available_seats +
+          " seats"
+        );
+      }
+
+      function populateBookFlightSelect(flights, preferredId) {
+        var sel = document.getElementById("book-flight-id");
+        if (!sel || sel.tagName !== "SELECT") return;
+        var prev =
+          preferredId != null && preferredId !== ""
+            ? String(preferredId)
+            : sel.value;
+        sel.innerHTML = "";
+        if (!flights || !flights.length) {
+          var emptyOpt = document.createElement("option");
+          emptyOpt.value = "";
+          emptyOpt.textContent = "No flights available";
+          emptyOpt.disabled = true;
+          sel.appendChild(emptyOpt);
+          setBookPreviewPlaceholder();
+          return;
+        }
+        flights.forEach(function (f) {
+          var opt = document.createElement("option");
+          opt.value = String(f.id);
+          opt.textContent = bookFlightOptionText(f);
+          sel.appendChild(opt);
+        });
+        var keep =
+          prev &&
+          flights.some(function (f) {
+            return String(f.id) === prev;
+          });
+        sel.value = keep ? prev : String(flights[0].id);
+        refreshBookFlightPreview();
+      }
+
+      async function loadBookFlightOptionsFromApi(preferredId) {
+        try {
+          var res = await fetch(API_BASE + "/flights");
+          if (!res.ok) return;
+          var data = await res.json();
+          if (Array.isArray(data)) populateBookFlightSelect(data, preferredId);
+        } catch (e) {}
+      }
+
+      async function refreshBookFlightPreview() {
+        var panel = document.getElementById("book-preview-content");
+        var idEl = document.getElementById("book-flight-id");
+        if (!panel || !idEl) return;
+        var raw = idEl.value.trim();
+        var id = parseInt(raw, 10);
+        if (!raw || Number.isNaN(id) || id < 1) {
+          setBookPreviewPlaceholder();
+          return;
+        }
+        try {
+          var res = await fetch(API_BASE + "/flights/" + id);
+          if (!res.ok) {
+            panel.innerHTML =
+              '<p class="book-preview-error">No flight found for that ID.</p>';
+            return;
+          }
+          var f = await res.json();
+          var route = escapeHtml(f.origin + " → " + f.destination);
+          panel.innerHTML =
+            '<p class="book-preview-route">' + route + "</p>" +
+            '<p class="book-preview-meta">' + escapeHtml(formatDateTime(f.departure_datetime)) + "</p>" +
+            '<p class="book-preview-meta">Duration: ' + escapeHtml(formatDuration(f.duration_minutes)) + "</p>" +
+            '<div class="book-preview-price">' + escapeHtml(formatPrice(f.price_per_seat)) + "</div>" +
+            '<div class="book-preview-seats">' +
+            f.available_seats +
+            " seats left · " +
+            f.total_seats +
+            " total</div>";
+        } catch (e) {
+          panel.innerHTML =
+            '<p class="book-preview-error">Could not load flight (is the API running?).</p>';
+        }
+      }
 
       function formatDuration(minutes) {
         const m = Number(minutes);
@@ -532,6 +960,7 @@
             document.getElementById("book-success").style.display = "none";
             clearEl("book-error");
             switchTab("book");
+            refreshBookFlightPreview();
             document.getElementById("book-name").focus();
           });
         });
@@ -551,28 +980,33 @@
           const cards = document.getElementById("all-cards");
           if (!cards) {
             showError(err, "Page layout error: missing flight list container.");
+            populateBookFlightSelect([]);
             return;
           }
           cards.innerHTML = "";
           const res = await fetch(API_BASE + "/flights");
           if (!res.ok) {
             showError(err, "Could not load flights (" + res.status + ")");
+            populateBookFlightSelect([]);
             return;
           }
           const data = await res.json();
           if (!Array.isArray(data)) {
             showError(err, "Unexpected response from server.");
+            populateBookFlightSelect([]);
             return;
           }
           data.forEach(function (f) {
             renderFlightCard(f, cards);
           });
           bindSelectBookButtons(cards);
+          populateBookFlightSelect(data);
         } catch (e) {
           showError(
             err,
             "Network error — is the API running on port 8000? (" + (e && e.message ? e.message : "failed") + ")"
           );
+          populateBookFlightSelect([]);
         } finally {
           setLoading("all-loading", false);
         }
@@ -644,7 +1078,13 @@
         errBox.innerHTML = "";
         successBox.style.display = "none";
 
-        const flightId = parseInt(document.getElementById("book-flight-id").value, 10);
+        const flightIdRaw = document.getElementById("book-flight-id").value;
+        const flightId = parseInt(flightIdRaw, 10);
+        if (!flightIdRaw || Number.isNaN(flightId) || flightId < 1) {
+          errBox.innerHTML =
+            '<div class="msg msg-error" role="alert">Please select a flight.</div>';
+          return;
+        }
         const payload = {
           flight_id: flightId,
           passenger_name: document.getElementById("book-name").value,
@@ -666,13 +1106,14 @@
             document.getElementById("book-ref-display").textContent = body.booking_reference;
             successBox.style.display = "block";
             document.getElementById("book-form").reset();
-            document.getElementById("book-flight-id").value = body.flight_id;
+            await loadBookFlightOptionsFromApi(body.flight_id);
             return;
           }
 
           if (res.status === 409) {
             errBox.innerHTML =
               '<div class="msg msg-error" role="alert">This flight is fully booked</div>';
+            loadBookFlightOptionsFromApi();
             return;
           }
 
@@ -823,6 +1264,11 @@
         var bookForm = document.getElementById("book-form");
         if (bookForm) bookForm.addEventListener("submit", submitBooking);
 
+        var bookFlightId = document.getElementById("book-flight-id");
+        if (bookFlightId) {
+          bookFlightId.addEventListener("change", refreshBookFlightPreview);
+        }
+
         var bookingsBtn = document.getElementById("bookings-search-btn");
         if (bookingsBtn) bookingsBtn.addEventListener("click", searchBookings);
 
@@ -836,6 +1282,7 @@
           });
         }
 
+        loadBookFlightOptionsFromApi();
         loadAllFlights();
       }
 

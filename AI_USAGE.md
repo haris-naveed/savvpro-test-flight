@@ -162,10 +162,55 @@ This file is the **AI usage log** for this repository, as required by the assess
 
 ---
 
+## Session 8 — Book a flight: dropdown instead of flight ID
+
+### Specific prompts I used
+
+1. “In **book a flight** tab instead of manually enter the flight id replace it with the **dropdown** which shows all **available** flights, user can select any option **by default first flight is auto selected**.”
+
+2. “**Continue** the booking dropdown work from the handoff: replace the number input with a `<select>` fed by **`GET /flights`**, default the **first** flight, keep **Select & Book** in sync, **re-fetch** after a **201** so seat labels update and **preserve** the booked **`flight_id`** when possible, don’t leave the control stuck on **Loading…** when **`loadAllFlights`** errors, **prefetch** options on startup if needed, style the **select** like the other book fields, and **verify** the inline script with **`node --check`**.”
+
+### Mistakes the AI made and how I corrected them
+
+| Mistake | How I corrected them |
+|--------|----------------------|
+| Early **`return`** paths inside **`loadAllFlights`** (bad HTTP response, bad JSON shape, missing container) **skipped** **`populateBookFlightSelect`**, so the Book tab could stay on **“Loading flights…”** forever. | I had the AI call **`populateBookFlightSelect([])`** (or the successful list on the happy path) on **every** exit from that flow, including **error** returns, so the select always reflects reality. |
+| Only **`loadAllFlights`** filled the dropdown; if I opened **Book** before the all-flights request finished—or **`loadAllFlights` failed**—**Select & Book** could set a **value** on options that were not built yet. | I had the AI call **`loadBookFlightOptionsFromApi()`** at **app init** (parallel with **`loadAllFlights`**) so the dropdown populates sooner; I accepted an **extra **`GET /flights`** on cold start** as a tradeoff for simpler UX. |
+| **`form.reset()`** after **201** clears the form; without an immediate **re-fetch**, the select could be wrong or empty until the next manual reload. | I had the AI **`await loadBookFlightOptionsFromApi(body.flight_id)`** after success so options and **seat counts** refresh and the **same flight** stays selected when it still exists. |
+
+### How I directed the AI (I led; the AI did not lead)
+
+- I constrained the change to the **Book** tab: **`<select>`** bound to **`GET /flights`**, **first option selected** when there is no prior choice, **`change`** drives the preview (no **number-input** debounce).
+- I required **behavior after booking** (**201** / **409**): refresh from the API so **available seats** in the dropdown stay honest.
+- I insisted on **guarding** submit when **no flight** is selected and on **re-running **`node --check`** on the extracted `<script>`** after edits.
+- I kept scope **frontend-only** for this step (**`frontend/public/index.html`** + existing backend contract).
+
+---
+
+## Session 9 — AI usage log update (`AI_USAGE.md`)
+
+### Specific prompts I used
+
+1. “**Add last 2 prompts work** in **`@AI_USAGE.md`** file **according to rules**.”
+
+### Mistakes the AI made and how I corrected them
+
+| Mistake | How I corrected them |
+|--------|----------------------|
+| Risk: treating the log as a **third-person changelog** instead of the required **first-person** “I prompted / I corrected / I directed” voice. | I required **Session 8** and **Session 9** entries to **match** the same headings and tables as **Sessions 1–7**, with **verbatim-style** prompt quotes and concrete **mistake → correction** rows. |
+| Risk: **vague** “we improved the UI” without tying rows to **files**, **endpoints**, and **verification** steps. | I had the AI tie Session 8 to **`populateBookFlightSelect`**, **`loadBookFlightOptionsFromApi`**, **`loadAllFlights`**, **`node --check`**, and this file for Session 9. |
+
+### How I directed the AI (I led; the AI did not lead)
+
+- I pointed at **`AI_USAGE.md`** as the **single source** for log structure and asked for the **last two** conversation prompts to be recorded **explicitly**.
+- I required **no scope creep**: update **documentation only** for Session 9; implementation details belong under **Session 8**.
+
+---
+
 ## Commands I ran to verify (optional trace)
 
 - `uvicorn main:app --reload` from repo root — confirm server starts after import fixes.
-- `node --check` on script extracted from `index.html` — confirm **no syntax errors** after fixes.
+- `node --check` on script extracted from `index.html` — confirm **no syntax errors** after fixes (including **book-flight `<select>`** changes).
 - `python -m pytest tests/test_api.py -v` — **6** API tests against in-memory SQLite.
 - `python -c` / `TestClient` against `backend.main` — confirm startup, `create_all`, and seed insert **8** flights.
 - `python -c` / `TestClient` — **`GET /flights`**, **`GET /flights/{id}`**, **`GET /flights/search`** (match / no match / invalid date).
