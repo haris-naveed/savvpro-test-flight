@@ -140,9 +140,32 @@ This file is the **AI usage log** for this repository, as required by the assess
 
 ---
 
+## Session 7 — Single-page UI (`frontend/public/index.html`)
+
+### Specific prompts I used
+
+1. “Build a **complete single page app** in **`frontend/public/index.html`**. **Vanilla HTML, CSS, JavaScript only**, no frameworks. Backend at **`http://localhost:8000`**. **Top navigation** with **4 tabs**: All Flights, Search, My Bookings, Book a Flight. **All Flights** (default): on load **`GET /flights`**, cards with route **ORIGIN → DESTINATION**, date/time, duration **Xh Ym**, price **$XX.XX per seat**, seats available, **Select & Book** → Book tab + pre-fill flight id. **Search**: origin, destination, date picker, **`GET /flights/search`**, same cards, **404** → ‘No flights found’. **Book**: **`POST /bookings`**, success green + reference, **409** red ‘fully booked’, **422** validation. **My Bookings**: one field name or reference, **`GET /bookings`**, badges, **Cancel** → **`DELETE`** + refresh. **Design**: clean blue, mobile, **loading** while fetching, **inline errors** (no `alert` except **`confirm`** for cancel).”
+
+### Mistakes the AI made and how I corrected them
+
+| Mistake | How I corrected it |
+|--------|----------------------|
+| Follow-up: UI stuck **loading** or **blank** with **no `fetch`** in DevTools—looked like the app never called the API. | I traced **two classes of issues**: (1) **HTML default** `#all-loading` had class **`visible`** so the spinner showed even when JS died; **`DOMContentLoaded`-only** init could miss running; **`loadAllFlights`** had work **outside** `try` so **`finally`** did not always hide the overlay. I had the AI **remove default `visible`**, call **`initApp()` immediately** at end of `<body>`, wrap startup in **`try/catch`**, and keep **`setLoading` in `finally`**. (2) **Fatal syntax error** in **`renderFlightCard`**: the last string literal ended with **`</button>";`** (wrong quote) instead of **`</button>';`**, so the **entire script failed to parse**—**no API calls**, Console error. I had the AI **fix the closing delimiter** and I verified with **`node --check`** on the extracted script. |
+| Browsing the UI at **`http://127.0.0.1:3000`** while CORS only allowed **`http://localhost:3000`** would **block** cross-origin **`fetch`** (different browser **Origin**). | I had the AI add **`http://127.0.0.1:3000`** to **`CORSMiddleware`** **`allow_origins`** in **`backend/main.py`** alongside **`localhost`**, then **restart uvicorn**. |
+
+### How I directed the AI (I led; the AI did not lead)
+
+- I specified **stack constraints** (no frameworks), **exact tab names**, **endpoints**, **status handling**, and **UX** (loading, inline errors, `confirm` only for cancel).
+- When integration broke, I supplied **DevTools evidence** (no XHR, JS error badge) and asked for **root-cause fixes**, not guesses.
+- I required **proof** the script is valid (**`node --check`**) after the quote bug so the failure mode could not repeat silently.
+- I connected **localhost vs 127.0.0.1** for **Origin** to **CORS allowlist** myself and had the backend updated accordingly.
+
+---
+
 ## Commands I ran to verify (optional trace)
 
 - `uvicorn main:app --reload` from repo root — confirm server starts after import fixes.
+- `node --check` on script extracted from `index.html` — confirm **no syntax errors** after fixes.
 - `python -m pytest tests/test_api.py -v` — **6** API tests against in-memory SQLite.
 - `python -c` / `TestClient` against `backend.main` — confirm startup, `create_all`, and seed insert **8** flights.
 - `python -c` / `TestClient` — **`GET /flights`**, **`GET /flights/{id}`**, **`GET /flights/search`** (match / no match / invalid date).
@@ -150,6 +173,4 @@ This file is the **AI usage log** for this repository, as required by the assess
 - `python -c` imports / `BookingCreate(...)` cases — confirm strip, blank rejection, and `min_length` after strip for `backend/schemas.py`.
 - `npm install` / `npm start` — confirm the Express scaffold serves `public/` when I exercise the frontend.
 
----
 
-*For new work: add a new dated/session section with the same three subsections—**Specific prompts**, **Mistakes & corrections**, **How I directed the AI**.*

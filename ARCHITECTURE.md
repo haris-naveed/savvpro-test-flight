@@ -2,13 +2,14 @@
 
 ## Overview
 
-FlightHub is a small **FastAPI** backend plus **Express** static/HTML frontend. Persistence is **SQLite** (`backend/flighthub.db`) via **SQLAlchemy 2.x** ORM models. Request/response shapes use **Pydantic v2** (`backend/schemas.py`). The API is consumed by the browser UI on **`http://localhost:3000`**, with **CORS** restricted to that origin.
+FlightHub is a small **FastAPI** backend plus **Express** static/HTML frontend. Persistence is **SQLite** (`backend/flighthub.db`) via **SQLAlchemy 2.x** ORM models. Request/response shapes use **Pydantic v2** (`backend/schemas.py`). The browser UI is served from **`http://localhost:3000`** or **`http://127.0.0.1:3000`** (Express static **`frontend/public/`**); the API base URL in the SPA is **`http://localhost:8000`**.
 
 Layers:
 
 - **HTTP** — FastAPI routers under `backend/routes/`, wired in `backend/main.py`.
 - **Persistence** — Session per request via `get_db()` (`backend/database.py`).
 - **Domain** — SQLAlchemy models (`backend/models.py`); validation DTOs (`backend/schemas.py`).
+- **Browser UI** — Single file **`frontend/public/index.html`**: embedded CSS, vanilla JS (no bundler/framework), tab panels, **`fetch`** to the FastAPI server; inline errors and loading overlays per tab.
 
 ---
 
@@ -84,7 +85,7 @@ On startup, if `flights` is empty, the app inserts **8** sample rows with varied
 - **Success** — `2xx` with JSON bodies matching Pydantic schemas where applicable.
 - **Validation** — Invalid body/query (e.g. bad date format) → **`422`** with clear `detail`.
 - **Not found** — Missing resource or empty search (where specified) → **`404`** with an explicit string `detail` for UX and tests.
-- **CORS** — `allow_origins: ["http://localhost:3000"]` so only the local Express UI calls the API from the browser.
+- **CORS** — `allow_origins` includes **`http://localhost:3000`** and **`http://127.0.0.1:3000`** so the same UI works whether staff open the site via **`localhost`** or **`127.0.0.1`** (the browser **`Origin`** header must match an allowed entry exactly).
 
 ### Flights (implemented)
 
@@ -137,6 +138,17 @@ Automated API tests live under **`tests/`** (`pytest` + Starlette **`TestClient`
 | **`tests/test_api.py`** | Six tests: list flights (**200**, non-empty), search by origin (**200**, matching rows), successful booking (**201**, **`booking_reference`**, **`confirmed`**), **overbooking** on the single-seat flight (**201** then **409**—**business rule**), cancel restores **inventory**, double cancel (**409**). |
 
 Run from repo root: **`python -m pytest tests/test_api.py -v`**.
+
+---
+
+## Frontend (SPA)
+
+| Topic | Detail |
+|--------|--------|
+| **Delivery** | Express (`frontend/app.js`) serves **`public/`**; all UI lives in **`index.html`** (no separate JS bundle). |
+| **API usage** | **`API_BASE = "http://localhost:8000"`** — `GET /flights`, `GET /flights/search`, `POST /bookings`, `GET /bookings`, `DELETE /bookings/{reference}`. |
+| **Integration** | **CORS** must allow the **exact** page origin (`localhost` vs `127.0.0.1`). The UI uses **`fetch`**; a **syntax error** in the inline script prevents **any** request from firing—validate with a JS syntax check when debugging “blank / no network” issues. |
+| **Caching** | HTML includes a **no-cache** meta for smoother local iteration; hard refresh if the browser serves a stale `index.html`. |
 
 ---
 
