@@ -50,10 +50,57 @@ This file is the **AI usage log** for this repository, as required by the assess
 
 ---
 
+## Session 3 — Pydantic v2 API schemas (`backend/schemas.py`)
+
+### Specific prompts I used
+
+1. “Write Pydantic v2 schemas in `backend/schemas.py`. **FlightResponse:** `id`, `origin`, `destination`, `departure_datetime`, `duration_minutes`, `price_per_seat`, `total_seats`, `available_seats`; use `model_config = ConfigDict(from_attributes=True)`. **BookingCreate:** `flight_id` int, `passenger_name` str (min 2 chars, strip whitespace), `passport_number` str (min 5 chars), `seat_number` str; add a `field_validator` that rejects blank strings for `passenger_name` and `passport_number`. **BookingResponse:** `booking_reference`, `flight_id`, `passenger_name`, `passport_number`, `seat_number`, `status`, `created_at` datetime; nested field `flight` of type `FlightResponse`; use `ConfigDict(from_attributes=True)`. **CancellationResponse:** `booking_reference` str, `status` str, `message` str. No routes yet, just schemas.”
+
+### Mistakes the AI made and how I corrected them
+
+| Mistake | How I corrected it |
+|--------|----------------------|
+| None in the final merged code that I kept. | I still **spot-checked** edge cases myself: whitespace-only names must fail after strip, stripped values must satisfy `min_length`, and imports must load under `from backend.schemas import …` from the repo root. |
+| (Common pitfall I watched for) **Validator vs constraint order** for “strip → not blank → min length” can be easy to get wrong in Pydantic v2. | I had the AI use a **`mode="before"`** validator that strips and rejects empty strings, then rely on **`Field(..., min_length=…)`** on the stripped values; I confirmed with short `python -c` runs (e.g. `"  Jo  "` → `"Jo"`, `"   "` → validation error). |
+
+### How I directed the AI (I led; the AI did not lead)
+
+- I pinned the **Pydantic major version** (v2) and required **`ConfigDict(from_attributes=True)`** only where specified, so responses stay ORM-friendly without extra guessing.
+- I spelled out **every model, field, nesting rule, and validation rule** (including **which fields** get the blank-string validator) instead of asking for “generic DTOs.”
+- I explicitly said **no routes yet, just schemas** to block unsolicited FastAPI endpoints.
+- After the AI edited the file, I **ran small validation checks** rather than assuming the validators behaved as intended.
+
+---
+
+## Session 4 — Flight routes (`backend/routes/flights.py`) + app wiring
+
+### Specific prompts I used
+
+1. “Create `backend/routes/flights.py` with an `APIRouter` prefix `/flights`. **GET `/flights`** — return all flights as a list, status **200**. **GET `/flights/search`** — query params: `origin` optional str, `destination` optional str, `date` optional str format **YYYY-MM-DD**; filter **case insensitive**; if no results return **404** with detail **`No flights found matching your criteria`**; if results return **200** with list. **GET `/flights/{flight_id}`** — return single flight or **404** **`Flight not found`**. In `backend/main.py` import and register this router. Also add **CORS** middleware allowing **`http://localhost:3000`**. Use **`get_db`** dependency injection for **all** endpoints.”
+
+### Mistakes the AI made and how I corrected them
+
+| Mistake | How I corrected it |
+|--------|----------------------|
+| The first cut named the search query parameter `date`, which **shadowed** Python’s `datetime.date` type, so `date.fromisoformat(...)` would have called the **wrong object** at runtime. | I renamed the function argument (e.g. `date_value`) and kept the **public query name** `date` using **`Query(alias="date")`**, so the URL stays `?date=` and parsing uses **`date.fromisoformat`** correctly. |
+| (Pitfall I enforced in the same change) **`/search` must be registered before** **`/{flight_id}`** or FastAPI may treat `"search"` as an ID. | I kept **`/search`** **above** the dynamic route in the router module and **smoke-tested** with `TestClient` so search and detail behave independently. |
+| The prompt did not specify behavior for a **malformed** `date` string. | I kept a **`422`** response with a clear detail for bad `YYYY-MM-DD` input so invalid params are not confused with “no matching flights” (**404**). |
+
+### How I directed the AI (I led; the AI did not lead)
+
+- I specified **exact paths**, **HTTP statuses**, and **exact `detail` strings** for the two 404 cases so the API matches the task wording.
+- I required **`Depends(get_db)` on every handler**, **`FlightResponse`** for list/detail payloads, and **`prefix="/flights"`** on the router—no extra booking endpoints in that step.
+- I called out **CORS** explicitly (**`http://localhost:3000` only**) and **router registration** in **`main.py`** next to existing app setup.
+- After the code landed, I **ran automated requests** (list, detail 404, search match / no match, invalid date) instead of assuming routing and filters were correct.
+
+---
+
 ## Commands I ran to verify (optional trace)
 
 - `uvicorn main:app --reload` from repo root — confirm server starts after import fixes.
 - `python -c` / `TestClient` against `backend.main` — confirm startup, `create_all`, and seed insert **8** flights.
+- `python -c` / `TestClient` — **`GET /flights`**, **`GET /flights/{id}`**, **`GET /flights/search`** (match / no match / invalid date).
+- `python -c` imports / `BookingCreate(...)` cases — confirm strip, blank rejection, and `min_length` after strip for `backend/schemas.py`.
 - `npm install` / `npm start` — confirm the Express scaffold serves `public/` when I exercise the frontend.
 
 ---

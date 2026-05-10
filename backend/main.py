@@ -1,16 +1,32 @@
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select
 
 if __package__:
     from .database import Base, SessionLocal, engine
     from .models import Flight
+    from .routes.bookings import router as bookings_router
+    from .routes.flights import router as flights_router
 else:
     from database import Base, SessionLocal, engine
     from models import Flight
+    from routes.bookings import router as bookings_router
+    from routes.flights import router as flights_router
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(flights_router)
+app.include_router(bookings_router)
 
 
 @app.on_event("startup")
